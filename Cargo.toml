@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "docker-log-driver",
+    "docker_protobuf",
+]
