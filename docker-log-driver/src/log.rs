@@ -21,7 +21,7 @@ pub struct LogMessage {
 }
 
 impl TryFrom<LogEntry> for LogMessage {
-    type Error = Box<dyn std::error::Error>;
+    type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
     fn try_from(log: LogEntry) -> Result<Self, Self::Error> {
         let naive_dt = NaiveDateTime::from_timestamp_millis(log.time_nano)

@@ -22,13 +22,7 @@ pub struct UnixServer {
 impl UnixServer {
     const SERVER_PATH: &'static str = "/run/docker/plugins";
 
-    pub fn new<S: Into<String>>(path: S) -> Self {
-        Self {
-            path: PathBuf::from(path.into())
-        }
-    }
-
-    pub fn from_fpath<S: Into<String>>(fpath: S) -> Self {
+    pub fn from_filename<S: Into<String>>(fpath: S) -> Self {
         Self {
             path: PathBuf::from(Self::SERVER_PATH).join(fpath.into()),
         }

@@ -73,8 +73,8 @@ impl<T: AsyncReadExt> Reader<T> {
             }
         }
         
-        let buffer_size = u32::from_le_bytes(size) as usize;
-        let mut buffer = Vec::with_capacity(buffer_size);
+        let buffer_size = u32::from_be_bytes(size) as usize;
+        let mut buffer = vec![0; buffer_size];
 
         let maybe_bytes = self.reader
             .read_exact(&mut buffer)

@@ -9,7 +9,7 @@ use crate::log::LogMessage;
 #[async_trait]
 pub trait Ingest {
     fn new<S: AsRef<str>>(uri: S) -> Self where Self: Sized;
-    async fn ingest(&self, message: LogMessage) -> Result<serde_json::Value, reqwest::Error>;
+    async fn ingest(&mut self, message: LogMessage) -> Result<serde_json::Value, reqwest::Error>;
 }
 
 pub struct IngestClient {
@@ -26,7 +26,7 @@ impl Ingest for IngestClient {
         }
     }
 
-    async fn ingest(&self, message: LogMessage) -> Result<serde_json::Value, reqwest::Error> {
+    async fn ingest(&mut self, message: LogMessage) -> Result<serde_json::Value, reqwest::Error> {
         let client = reqwest::Client::new();
         let url = format!("{}/logs", self.uri);
 
