@@ -1,5 +1,5 @@
 use axum::{
-    extract::State,
+    extract::{State, RawBody},
     Json,
     response::IntoResponse,
 };
@@ -39,9 +39,15 @@ pub struct LogDriver;
 impl LogDriver {
     pub async fn start_logging<T: FifoProcessor + Send + 'static>(
         State(mut state): State<AppState>,
-        Json(payload): Json<StartLoggingPayload>,
+        RawBody(payload): RawBody,
+        //Json(payload): Json<StartLoggingPayload>,
     ) -> impl IntoResponse {
         let (tx, rx) = tokio::sync::oneshot::channel::<bool>();
+        let json_payload: StartLoggingPayload = serde_json::from_slice(
+            &hyper::body::to_bytes(payload)
+                .await
+                .unwrap()
+        ).unwrap();
         let task: T = T::new(
             state
                 .config
@@ -50,12 +56,12 @@ impl LogDriver {
 
         state
             .add_task_flag(
-                &payload.file, 
+                &json_payload.file, 
                 tx,
         ).await;
 
         // Spawn the task to process the fifo file
-        tokio::spawn(task.process(payload.file, rx));
+        tokio::spawn(task.process(json_payload.file, rx));
         Json(json!({"Err": ""}))
     }
 

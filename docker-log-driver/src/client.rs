@@ -32,7 +32,7 @@ impl Ingest for IngestClient {
 
         let response = client
             .post(url)
-            .json(&message)
+            .json(&vec![&message])
             .send()
             .await?;
         

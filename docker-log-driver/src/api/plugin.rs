@@ -14,7 +14,7 @@ pub struct PluginImplements {
 impl PluginImplements {
     pub fn new() -> Self {
         Self {
-            implements: vec!["LoggingDriver".to_string()],
+            implements: vec!["LogDriver".to_string()],
         }
     }
 }

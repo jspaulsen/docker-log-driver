@@ -1,0 +1,8 @@
+# ghcr.io/jspaulsen/log-ingest-api:0.1.1-dev.0
+services:
+  random:
+    image: chentex/random-logger:latest
+    logging:
+      driver: "jspaulsen/ingest-driver:v1"
+      options:
+        LOG_INGEST_API: "http://localhost:9080"

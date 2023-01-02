@@ -1,0 +1,69 @@
+FROM rust as build
+
+USER root
+
+RUN \
+    apt-get update && apt-get install -y \
+        protobuf-compiler
+
+WORKDIR /cache-project
+
+# Create dummy file to force cargo to build dependencies
+RUN \
+    mkdir -p docker-log-driver && \
+    mkdir -p docker_protobuf && \
+    cd docker-log-driver && \
+    cargo init --bin && \
+    touch src/lib.rs && \
+    cd ../docker_protobuf && \
+    cargo init --lib && \
+    touch src/lib.rs
+
+# Copy over manifests
+COPY Cargo.lock Cargo.lock
+COPY Cargo.toml Cargo.toml
+
+COPY docker-log-driver/Cargo.toml docker-log-driver/Cargo.toml
+COPY docker-log-driver/Cargo.lock docker-log-driver/Cargo.lock
+
+COPY docker_protobuf/Cargo.toml docker_protobuf/Cargo.toml
+COPY docker_protobuf/Cargo.lock docker_protobuf/Cargo.lock
+
+# Build dependencies
+RUN \
+    cargo build \
+        --release \
+        --locked
+
+
+# Remove and copy over source code
+RUN \
+    rm -r docker-log-driver/src/* && \
+    rm -r docker_protobuf/src/*
+
+COPY docker-log-driver/src docker-log-driver/src
+COPY docker_protobuf/src docker_protobuf/src
+COPY docker_protobuf/build.rs docker_protobuf/build.rs
+
+# Cleanup and build release image
+RUN \
+    rm target/release/docker-log-driver* && \
+    rm target/release/deps/docker_log_driver* && \
+    rm target/release/deps/docker_protobuf* && \
+    rm target/release/deps/libdocker_protobuf* 
+
+RUN \
+    ls docker_protobuf/src && \
+    cargo build \
+        --release \
+        --locked
+
+
+FROM ubuntu:focal as plugin
+
+RUN \
+    apt-get update && apt-get install -y \
+        libssl1.1 
+
+# /usr/bin/docker-log-driver
+COPY --from=build /cache-project/target/release/docker-log-driver /usr/bin/docker-log-driver

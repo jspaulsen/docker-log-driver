@@ -24,8 +24,8 @@ impl TryFrom<LogEntry> for LogMessage {
     type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
     fn try_from(log: LogEntry) -> Result<Self, Self::Error> {
-        let naive_dt = NaiveDateTime::from_timestamp_millis(log.time_nano)
-            .ok_or("Invalid timestamp")?; // TODO: Unsure if this is correct; is it actually using nano timestamps?
+        let naive_dt = NaiveDateTime::from_timestamp_millis(log.time_nano / 1000)
+            .ok_or(format!("Invalid timestamp: {}", log.time_nano))?; // TODO: Unsure if this is correct; is it actually using nano timestamps?
         let dt = DateTime::<Utc>::from_utc(naive_dt, Utc);
 
         // TODO: add support for partial log entries
@@ -94,7 +94,7 @@ mod tests {
     fn test_into_log_message() {
         let expected_time_nano = 1620000000000;
         let log = LogEntry {
-            time_nano: expected_time_nano,
+            time_nano: expected_time_nano * 1000,
             line: r#"{"message":"test","level":2,"another_field": 4}"#
                 .as_bytes()
                 .to_vec(),
@@ -123,7 +123,7 @@ mod tests {
     fn test_string_log_message() {
         let expected_time_nano = 1620000000000;
         let log = LogEntry {
-            time_nano: expected_time_nano,
+            time_nano: expected_time_nano * 1000,
             line: r#"test"#.as_bytes().to_vec(),
             partial: false,
             partial_log_metadata: None,

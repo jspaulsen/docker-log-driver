@@ -75,13 +75,24 @@ async fn process_file<A: AsyncReadExt, T: Ingest>(config: &Config, file: A) -> R
             .next()
             .await?;
         
+        // TODO: This isn't super efficient.  We should probably use a MPSC channel to send the messages
+        // on a separate green thread.  For a first pass, this is fine.
         match log_entry {
             Some(entry) => {
                 let message = LogMessage::try_from(entry)?; // TODO: select appropriate error type
-
-                client
+                let results = client
                     .ingest(message)
-                    .await?;
+                    .await;
+                
+                match results {
+                    Ok(_) => {},
+                    Err(e) => {
+                        tracing::error!(
+                            error = ?e,
+                            "Error ingesting log message",
+                        );
+                    }
+                }
             },
             None => { // If empty, we received EOF
                 break; 
