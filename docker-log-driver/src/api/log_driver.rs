@@ -7,7 +7,7 @@ use serde::Deserialize;
 use serde_json::json;
 use tracing::{warn, info};
 
-use crate::task::FifoProcessor;
+use crate::{task::FifoProcessor, error::HttpError};
 
 use super::AppState;
 
@@ -40,14 +40,14 @@ impl LogDriver {
     pub async fn start_logging<T: FifoProcessor + Send + 'static>(
         State(mut state): State<AppState>,
         RawBody(payload): RawBody,
-        //Json(payload): Json<StartLoggingPayload>,
-    ) -> impl IntoResponse {
+    ) -> Result<impl IntoResponse, HttpError> {
         let (tx, rx) = tokio::sync::oneshot::channel::<bool>();
-        let json_payload: StartLoggingPayload = serde_json::from_slice(
+        let payload: StartLoggingPayload = serde_json::from_slice(
             &hyper::body::to_bytes(payload)
                 .await
-                .unwrap()
-        ).unwrap();
+                .map_err(|_| HttpError::bad_request(None))?
+        ).map_err(|_| HttpError::bad_request(None))?;
+
         let task: T = T::new(
             state
                 .config
@@ -56,19 +56,25 @@ impl LogDriver {
 
         state
             .add_task_flag(
-                &json_payload.file, 
+                &payload.file, 
                 tx,
         ).await;
 
         // Spawn the task to process the fifo file
-        tokio::spawn(task.process(json_payload.file, rx));
-        Json(json!({"Err": ""}))
+        tokio::spawn(task.process(payload.file, rx));
+        Ok(Json(json!({"Err": ""})))
     }
 
     pub async fn stop_logging(
         State(mut state): State<AppState>,
-        Json(payload): Json<StopLoggingPayload>,
-    ) -> impl IntoResponse {
+        RawBody(payload): RawBody,
+    ) -> Result<impl IntoResponse, HttpError> {
+        let payload: StopLoggingPayload = serde_json::from_slice(
+            &hyper::body::to_bytes(payload)
+                .await
+                .map_err(|_| HttpError::bad_request(None))?
+        ).map_err(|_| HttpError::bad_request(None))?;
+
         let flag = state
             .take_task_flag(&payload.file)
             .await;
@@ -89,7 +95,7 @@ impl LogDriver {
                     );
                 }
 
-                Json(json!({"Err": ""}))
+                Ok(Json(json!({"Err": ""})))
             },
             None => {
                 warn!(
@@ -98,7 +104,7 @@ impl LogDriver {
                     payload.file,
                 );
 
-                Json(json!({"Err": "No task found for container logging to file"}))
+                Ok(Json(json!({"Err": "No task found for container logging to file"})))
             },
         }
     }
@@ -286,7 +292,7 @@ mod tests {
             state.clone(),
             body,
         ).await;
-    
+
         assert_eq!(results.status(), http::StatusCode::OK);
         
         // give task time to complete
